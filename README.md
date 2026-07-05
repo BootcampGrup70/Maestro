@@ -6,8 +6,11 @@ Grup 70 (Maestro)
 
 ## Takım Elemanları
 
-- [İsim Soyisim] (RA):
-
+- **Roya Arkhmammadova:** Product Owner
+- **Emre Çapar:** Scrum Master
+- **Sudenur Mutlu:** Developer
+- **Ebru Doğan:** Developer
+- **Ahmet Yumutkan:** Developer
 
 ## Ürün İsmi
 
@@ -53,15 +56,14 @@ Maestro
 
 ## Product Backlog URL
 
-[Trello Backlog Board](https://trello.com/b/wsNq02nB/maestro-group50)
+[Trello Backlog Board](https://trello.com/b/wsNq02nB/maestro-group70)
 
 ---
 
 # Sprint 1
 
-- **Backlog düzeni ve Story seçimleri**: Product Backlog, projenin temelini oluşturacak story'lere göre düzenlenmiştir: altyapı mimarisinin seçilmesi, örnek modellerin belirlenip özelliklerinin çıkarılması, arayüzün tasarlanması, database'in tasarlanması ve sprint README'sinin oluşturulması. Story'ler, kart içi checklist'ler aracılığıyla alt görevlere (task) bölünmüştür (örn. "Database Tasarlanması" kartındaki checklist).
-
-- **Daily Scrum**: Google meets uzerinden ihtiyac ve musaitlik zamanina gore yapiliyor. 
+- **Backlog düzeni ve Story seçimleri**: Product Backlog, projenin temelini oluşturacak story'lere göre düzenlenmiştir: altyapı mimarisinin seçilmesi, örnek modellerin belirlenip özelliklerinin çıkarılması, arayüzün tasarlanması, database'in tasarlanması ve sprint README'sinin oluşturulması. Story'ler, kart içi checklist'ler aracılığıyla alt görevlere (task) bölünmüştür. Kapsam kaymasını önlemek ve MVP sınırlarına sadık kalabilmek adına takımdaki tüm roller yetkinlik alanlarına göre atanmıştır.
+- **Daily Scrum**: Google Meet ve asenkron olarak Slack/WhatsApp kanalları üzerinden, ekibin uygunluk durumuna göre haftada en az 3 kez olacak şekilde organize edilmektedir. 
 
 - **Sprint board update**: Sprint board screenshotları: ![Trello](images/image-0.png)
 ![alt text](images/image.png)
@@ -70,13 +72,14 @@ Maestro
 ![alt text](images/image-3.png)
 ![alt text](images/image-4.png)
 
-- **Ürün Durumu**: Ekran görüntüleri: [buraya eklenecek]
+- **Ürün Durumu**: Ekran görüntüleri: 
 ![alt text](images/image-22.png)
 ![alt text](images/image-33.png)
 ![alt text](images/image-44.png)
 
 - **Sprint Review**:
-Alınan kararlar: v1 demo'nun laptop üzerinde sorunsuz çalışabilmesi için auth ve restart sonrası kalıcılık bilinçli olarak kapsam dışı bırakılmıştır. Otomatik subagent oluşturma, çoklu tool desteği, MCP entegrasyonu ve effort seviyesi ayarları sonraki versiyonlara ertelenmiştir. Ayrıca token kontrolü, farklı modeller arası sonuç karşılaştırma, reasoning geçmişinin loglanması, agent durdurma/devam ettirme ve paylaşılabilir config fikirleri backlog'a not düşülmüştür. 
+* **Alınan Kararlar:** v1 demo'nun laptop üzerinde sorunsuz çalışabilmesi için auth ve restart sonrası kalıcılık bilinçli olarak kapsam dışı bırakılmıştır. Otomatik subagent oluşturma, çoklu tool desteği, MCP entegrasyonu ve effort seviyesi ayarları sonraki versiyonlara ertelenmiştir. Ayrıca token kontrolü, farklı modeller arası sonuç karşılaştırma, reasoning geçmişinin loglanması, agent durdurma/devam ettirme ve paylaşılabilir config fikirleri backlog'a not düşülmüştür.
+* **Katılımcılar:** Tüm takım üyeleri katılım sağlamıştır.
 
 - **Sprint Retrospective:**
   - Mimari kararların (frontend/backend teknoloji seçimleri) sprint başında netleştirilmesi gerektiği görülmüştür
