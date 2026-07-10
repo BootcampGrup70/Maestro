@@ -1,0 +1,30 @@
+"""Test fixtures.
+
+We point the app at a throwaway temp-file SQLite DB *before* importing it, so the
+module-level engine (created at import time from settings) uses the test database rather
+than the real ``maestro.db``.
+"""
+
+from __future__ import annotations
+
+import os
+import tempfile
+from collections.abc import Iterator
+from pathlib import Path
+
+_TMP_DIR = Path(tempfile.mkdtemp(prefix="maestro-test-"))
+os.environ["MAESTRO_DATABASE_URL"] = f"sqlite+aiosqlite:///{_TMP_DIR / 'test.db'}"
+os.environ["MAESTRO_WORKSPACE_DIR"] = str(_TMP_DIR / "workspace")
+os.environ["MAESTRO_AUTO_CREATE_TABLES"] = "1"
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
+@pytest.fixture
+def client() -> Iterator[TestClient]:
+    """A TestClient that runs the app lifespan (creates tables on the temp DB)."""
+    with TestClient(app) as test_client:
+        yield test_client
