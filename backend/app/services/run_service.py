@@ -191,25 +191,113 @@ async def _handle_tool_calls(
     message: Message,
     tool_calls: list[dict[str, Any]],
 ) -> None:
-    """STUB: execute filesystem tool calls requested by the model.
+    """Tool-calling lifecycle: execute tools, persist results, re-invoke model until done."""
+    from app.models.tool_call import ToolCall
+    from app.models.enums import ToolCallStatus
+    from app.services.tools.registry import dispatch
+    from app.services.tools.filesystem import FilesystemToolError
 
-    Open task for the team. The intended implementation:
-      1. Flip agent status to ``tool_calling`` and broadcast it.
-      2. For each tool call: insert a ``tool_calls`` row (status=pending, broadcast
-         tool_call_created), dispatch via ``services.tools.registry.dispatch``, then update
-         the row (success/error, result/error_message, broadcast tool_call_updated).
-      3. Append a ``tool`` role message with each result and re-invoke the model so it can
-         continue, looping until no more tool calls are returned.
-    See app/services/tools/filesystem.py and registry.py for the ready-made helpers.
+    manager = get_manager()
+    MAX_ITERATIONS = 10
+    iteration = 0
 
-    For now this is a no-op (logs and returns) so the vertical slice still completes; the
-    model's tool requests are simply not executed yet.
-    """
-    logger.info(
-        "Agent %s requested %d tool call(s); tool execution is not yet implemented",
-        agent.id,
-        len(tool_calls),
-    )
+    # Agent durumunu tool_calling yap
+    await agent_service.set_status(session, agent, AgentStatus.TOOL_CALLING)
+    await manager.broadcast(events.agent_status(agent.id, AgentStatus.TOOL_CALLING))
+
+    current_tool_calls = tool_calls
+    history = await _build_history(session, agent)
+
+    while current_tool_calls and iteration < MAX_ITERATIONS:
+        iteration += 1
+        tool_messages: list[dict[str, Any]] = []
+
+        for call in current_tool_calls:
+            tool_name = call.get("function", {}).get("name", "filesystem")
+            arguments = call.get("function", {}).get("arguments", {})
+            operation = arguments.get("operation", "")
+
+            # DB'ye pending olarak kaydet
+            tc = ToolCall(
+                agent_id=agent.id,
+                message_id=message.id,
+                tool_name=tool_name,
+                operation=operation,
+                arguments=arguments,
+                status=ToolCallStatus.PENDING,
+            )
+            session.add(tc)
+            await session.commit()
+            await session.refresh(tc)
+
+            await manager.broadcast(
+                events.tool_call_created(agent.id, tc.id, operation)
+            )
+
+            # Tool'u çalıştır
+            try:
+                result = dispatch(tool_name, arguments)
+                tc.status = ToolCallStatus.SUCCESS
+                tc.result = result
+            except (FilesystemToolError, Exception) as exc:
+                result = str(exc)
+                tc.status = ToolCallStatus.ERROR
+                tc.error_message = result
+                logger.warning("Tool call failed: %s", exc)
+
+            session.add(tc)
+            await session.commit()
+
+            await manager.broadcast(
+                events.tool_call_updated(agent.id, tc.id, tc.status.value)
+            )
+
+            # Modele geri dönecek mesajı hazırla
+            tool_messages.append({
+                "role": MessageRole.TOOL.value,
+                "content": result,
+            })
+
+        # Tool sonuçlarını history'e ekle
+        history.extend(tool_messages)
+
+        # Modeli tekrar çağır
+        content_parts: list[str] = []
+        thinking_parts: list[str] = []
+        current_tool_calls = []
+
+        async for chunk in ollama_client.stream_chat(
+            model=agent.model,
+            messages=history,
+            options=agent.settings,
+            tools=TOOL_SCHEMAS,
+            think=bool(agent.settings.get("think", False)),
+        ):
+            if chunk.content:
+                content_parts.append(chunk.content)
+                await manager.broadcast(
+                    events.message_delta(agent.id, None, chunk.content)
+                )
+            if chunk.thinking:
+                thinking_parts.append(chunk.thinking)
+            if chunk.tool_calls:
+                current_tool_calls.extend(chunk.tool_calls)
+
+        # Yeni mesajı kaydet
+        if content_parts or thinking_parts:
+            message = await _persist_message(
+                session,
+                agent.id,
+                MessageRole.ASSISTANT,
+                content="".join(content_parts) or None,
+                thinking="".join(thinking_parts) or None,
+            )
+            await manager.broadcast(
+                events.message_created(agent.id, message.id, message.seq, message.role.value)
+            )
+
+    if iteration >= MAX_ITERATIONS:
+        logger.warning("Agent %s reached max tool-call iterations (%d)", agent.id, MAX_ITERATIONS)
 
 
 async def list_runs(session: AsyncSession, agent_id: str) -> list[Run]:
