@@ -18,7 +18,7 @@ from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.core.concurrency import get_run_semaphore
+from app.core.concurrency import get_agent_lock, get_run_semaphore
 from app.core.time import now_ms
 from app.db import SessionLocal
 from app.models.agent import Agent
@@ -32,8 +32,15 @@ from app.ws.manager import get_manager
 
 logger = logging.getLogger(__name__)
 
+# An agent in one of these states already has (or is about to have) a run streaming, so a
+# freshly-created run queues behind it rather than overriding its visible status.
+_BUSY_STATUSES = {AgentStatus.QUEUED, AgentStatus.THINKING, AgentStatus.TOOL_CALLING}
+
 
 async def _next_seq(session: AsyncSession, agent_id: str) -> int:
+    # TODO(v2): read-then-insert isn't locked across sessions, so an interjection persisted
+    # from the WS handler while a run persists its reply could collide on the unique
+    # (agent_id, seq) index. Fine under the single-user v1 assumption.
     result = await session.execute(
         select(func.coalesce(func.max(Message.seq), -1)).where(Message.agent_id == agent_id)
     )
@@ -76,7 +83,15 @@ async def _build_history(session: AsyncSession, agent: Agent) -> list[dict[str, 
 
 
 async def create_run(session: AsyncSession, agent: Agent, prompt: str) -> Run:
-    """Persist the user prompt + a queued run, then spawn the background executor."""
+    """Persist the user prompt + a queued run, then spawn the background executor.
+
+    If the agent is already busy (an interjection while a run streams), the new run is
+    still created and dispatched, but we leave the current run's status visible — the
+    per-agent lock in ``_execute_run`` makes this run wait, and it flips the agent to
+    ``thinking`` only when it actually starts.
+    """
+    was_busy = agent.status in _BUSY_STATUSES
+
     await _persist_message(session, agent.id, MessageRole.USER, prompt)
 
     run = Run(agent_id=agent.id, prompt=prompt, status=RunStatus.QUEUED)
@@ -84,12 +99,26 @@ async def create_run(session: AsyncSession, agent: Agent, prompt: str) -> Run:
     await session.commit()
     await session.refresh(run)
 
-    await agent_service.set_status(session, agent, AgentStatus.QUEUED)
-    await get_manager().broadcast(events.agent_status(agent.id, AgentStatus.QUEUED))
+    if not was_busy:
+        await agent_service.set_status(session, agent, AgentStatus.QUEUED)
+        await get_manager().broadcast(events.agent_status(agent.id, AgentStatus.QUEUED))
 
     # Fire-and-forget: the executor opens its own session (outside request scope).
     asyncio.create_task(_execute_run(run.id, agent.id))
     return run
+
+
+async def interject(session: AsyncSession, agent_id: str, prompt: str) -> Run | None:
+    """Queue a user instruction arriving over the WebSocket.
+
+    Functionally the same as ``POST /runs``: it reuses ``create_run``, so if the agent is
+    mid-run the new instruction runs after the current one finishes (per-agent lock);
+    if idle it starts immediately. Returns ``None`` if the agent doesn't exist.
+    """
+    agent = await agent_service.get_agent(session, agent_id)
+    if agent is None:
+        return None
+    return await create_run(session, agent, prompt)
 
 
 async def _execute_run(run_id: str, agent_id: str) -> None:
@@ -97,7 +126,10 @@ async def _execute_run(run_id: str, agent_id: str) -> None:
     manager = get_manager()
     semaphore = get_run_semaphore()
 
-    async with semaphore:
+    # Acquire the per-agent lock *outside* the semaphore (consistent order everywhere, so
+    # no deadlock): a run queued behind another run for the same agent waits here holding
+    # no semaphore slot, then streams only once the earlier run has finished.
+    async with get_agent_lock(agent_id), semaphore:
         async with SessionLocal() as session:
             agent = await session.get(Agent, agent_id)
             run = await session.get(Run, run_id)

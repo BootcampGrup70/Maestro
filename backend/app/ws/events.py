@@ -5,8 +5,14 @@ Keeping construction in one place means the frontend contract lives in a single 
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
+
 from app.models.enums import AgentStatus
 from app.schemas.ws import WSEvent, WSEventType
+
+if TYPE_CHECKING:
+    from app.models.agent import Agent
 
 
 def agent_status(agent_id: str, status: AgentStatus, error_message: str | None = None) -> WSEvent:
@@ -14,6 +20,27 @@ def agent_status(agent_id: str, status: AgentStatus, error_message: str | None =
         type=WSEventType.AGENT_STATUS,
         agent_id=agent_id,
         data={"status": status.value, "error_message": error_message},
+    )
+
+
+def agent_snapshot(agents: Iterable[Agent]) -> WSEvent:
+    """A one-shot dump of every agent's current status, sent when a client connects.
+
+    Agent-scoped fields live in ``data['agents']`` since this event spans all agents;
+    the envelope's top-level ``agent_id`` stays ``None``.
+    """
+    return WSEvent(
+        type=WSEventType.AGENT_SNAPSHOT,
+        data={
+            "agents": [
+                {
+                    "agent_id": agent.id,
+                    "status": agent.status.value,
+                    "error_message": agent.error_message,
+                }
+                for agent in agents
+            ]
+        },
     )
 
 
