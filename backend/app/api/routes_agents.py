@@ -60,4 +60,11 @@ async def update_position(
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_agent(agent_id: str, session: AsyncSession = Depends(get_session)) -> None:
     agent = await _get_or_404(session, agent_id)
-    await agent_service.delete_agent(session, agent)
+    try:
+        await agent_service.delete_agent(session, agent)
+    except agent_service.AgentHasActiveRunError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete an agent with an active run; wait for it to finish first.",
+        ) from exc
+    await get_manager().broadcast(events.agent_deleted(agent_id))

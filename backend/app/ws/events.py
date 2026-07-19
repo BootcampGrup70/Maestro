@@ -69,5 +69,9 @@ def tool_call_updated(agent_id: str, tool_call_id: str, status: str) -> WSEvent:
     )
 
 
+def agent_deleted(agent_id: str) -> WSEvent:
+    return WSEvent(type=WSEventType.AGENT_DELETED, agent_id=agent_id, data={})
+
+
 def error(agent_id: str | None, message: str) -> WSEvent:
     return WSEvent(type=WSEventType.ERROR, agent_id=agent_id, data={"message": message})

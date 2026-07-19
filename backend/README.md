@@ -94,3 +94,24 @@ stream from Ollama -> broadcast over WebSocket -> persist messages**. Other area
 stubbed with typed signatures and `TODO`s so the team can build in parallel. The main
 open stub is real tool-calling in `app/services/run_service.py` and
 `app/services/tools/filesystem.py`.
+
+## Feature:  Advanced Agent Deletion & Canvas Sync
+
+`DELETE /agents/{id}` now does three things beyond a bare row delete:
+
+- **Cascading cleanup** - deleting an agent removes its `messages`, `runs`, and
+  `tool_calls` rows too. This is enforced at the SQLite level (`ondelete="CASCADE"` on
+  each `agent_id` foreign key, combined with the `PRAGMA foreign_keys = ON` set on every
+  connection in `app/db.py`), not by application code.
+- **Active-run guard** - if the agent has a `queued` or `running` row in `runs`, the
+  delete is rejected with `409 Conflict` instead of tearing down state out from under a
+  live background task. There's no run-cancellation path yet (see `TODO.md`), so refusing
+  is the safe default; once task cancellation exists this can become stop-then-delete.
+- **Live canvas sync** - on a successful delete, the server broadcasts an `agent_deleted`
+  WebSocket event (`{"type": "agent_deleted", "agent_id": ...}`) so connected clients can
+  remove the node without a manual refresh.
+
+Implementation: `app/services/agent_service.py` (`AgentHasActiveRunError` + the guard in
+`delete_agent`), `app/api/routes_agents.py` (409 mapping + broadcast), `app/schemas/ws.py`
++ `app/ws/events.py` (the new `AGENT_DELETED` event type/builder). Covered by
+`tests/test_agent_deletion.py`.

@@ -7,8 +7,13 @@ from sqlmodel import select
 
 from app.core.time import now_ms
 from app.models.agent import Agent
-from app.models.enums import AgentStatus
+from app.models.enums import AgentStatus, RunStatus
+from app.models.run import Run
 from app.schemas.agent import AgentCreate, AgentUpdate
+
+
+class AgentHasActiveRunError(Exception):
+    """Raised when deleting an agent that has a queued/running run."""
 
 
 async def create_agent(session: AsyncSession, data: AgentCreate) -> Agent:
@@ -75,5 +80,18 @@ async def set_status(
 
 
 async def delete_agent(session: AsyncSession, agent: Agent) -> None:
+    """Delete an agent (cascades to its messages/runs/tool_calls via ON DELETE CASCADE).
+
+    Raises ``AgentHasActiveRunError`` if the agent has a queued/running run - there is no
+    task-cancellation path yet, so we refuse rather than delete out from under it.
+    """
+    active_run = await session.execute(
+        select(Run.id)
+        .where(Run.agent_id == agent.id, Run.status.in_([RunStatus.QUEUED, RunStatus.RUNNING]))
+        .limit(1)
+    )
+    if active_run.scalar_one_or_none() is not None:
+        raise AgentHasActiveRunError(agent.id)
+
     await session.delete(agent)
     await session.commit()

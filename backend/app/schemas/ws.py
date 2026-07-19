@@ -24,6 +24,7 @@ class WSEventType(str, Enum):
     THINKING_DELTA = "thinking_delta"
     TOOL_CALL_CREATED = "tool_call_created"
     TOOL_CALL_UPDATED = "tool_call_updated"
+    AGENT_DELETED = "agent_deleted"
     ERROR = "error"
 
 
