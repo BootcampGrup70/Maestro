@@ -97,7 +97,7 @@ Maestro
 - **Sprint Board Update**: Sprint board screenshotları:
   ![Trello Board 1](images/sprint2-board-1.png)
   ![Trello Board 2](images/sprint2-board-2.png)
-  ![Task Example](images/sprint2_task_example1.png)
+  ![Task Example](images/sprint2_taskexample1.png)
 
 - **Ürün Durumu**: 
   - Ajan ayarları (Token, Temperature, System Prompt) için Dark Mode temalı dinamik UI formu başarıyla entegre edildi ve backend API'sine (`PATCH /agents/{id}`) bağlandı.
