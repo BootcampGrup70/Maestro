@@ -90,8 +90,35 @@ Maestro
 ---
 
 # Sprint 2
+- **Backlog Düzeni ve Story Seçimleri**: Product Owner tarafından hazırlanan temel backend API taslağı (skeleton) referans alınarak, takım tarafından 7 adet ana geliştirme görevi (Tool-Calling, Orchestration, UI Entegrasyonları vb.) çıkarılmış ve Product Backlog'a eklenmiştir. Sprint 2 için planlanan görevlerde kod çakışmalarını (conflict) tamamen önlemek ve kod kalitesini artırmak adına takım genelinde **"Branch-based Pull Request (PR)"** iş akışına geçilmiştir.
 
+- **Daily Scrum**: İletişim WhatsApp ve Slack üzerinden asenkron olarak kesintisiz devam etmiş, PR (Pull Request) incelemeleri ve onay süreçleri için takımca senkron değerlendirmeler yapılmıştır. Yerel (local) ortamda model entegrasyonları sırasında yaşanan çevresel farklılıklar, takım içi yardımlaşma ile hızlıca çözüme kavuşturulmuştur.
 
+- **Sprint Board Update**: Sprint board screenshotları:
+  ![Trello Board 1](images/sprint2-board-1.png)
+  ![Trello Board 2](images/sprint2-board-2.png)
+  ![Task Example](images/sprint2_task_example1.png)
+
+- **Ürün Durumu**: 
+  - Ajan ayarları (Token, Temperature, System Prompt) için Dark Mode temalı dinamik UI formu başarıyla entegre edildi ve backend API'sine (`PATCH /agents/{id}`) bağlandı.
+  - Ajanların dosya okuma/yazma araçlarını kullanabilmesi için Tool-Calling döngüsü kurgulandı.
+  - Ajan çökmeleri ve eşzamanlı çalışma kısıtlamaları (Semaphore) için Run Orchestration mekanizması tamamlandı.
+  - Sisteme kayıtlı modellerin UI üzerinden doğrulanması ve listelenmesi sağlandı.
+  - **Test Süreçleri:** Sistemin temel sağlığını doğrulamak amacıyla backend uç noktaları için **Smoke Testler** (Duman Testleri) koşulmuş ve tüm senaryoların başarıyla geçtiği onaylanmıştır.
+  - **Ekran Görüntüleri:**
+    - Ajan Ayarları Arayüzü (Frontend): ![Agent Settings UI](images/sprint2-ui.png)
+    - Backend API Uç Noktaları 1: ![API Endpoint 1](images/sprint2-api-1.png)
+    - Backend API Uç Noktaları 2: ![API Endpoint 2](images/sprint2-api-2.png)
+    - PR Açıklaması Örneği: ![PR Description](images/sprin2_PR_description.png)
+
+- **Sprint Review**: 
+  - **Alınan Kararlar:** PO'nun sunduğu mimari taslak üzerine inşa edilen altyapı görevleri ve UI entegrasyonları, planlandığı gibi %100 başarıyla tamamlanmıştır. Takımın yeni PR iş akışına tam uyum sağladığı ve duman testlerinin (smoke tests) sorunsuz çalıştığı görülmüştür. Backlog'da bekleyen diğer ileri seviye görevler (WebSocket Inbound Messages, Advanced Deletion) Sprint 3 planlamasına aktarılmıştır.
+  - **Katılımcılar:** Tüm takım üyeleri katılım sağlamıştır.
+
+- **Sprint Retrospective:**
+  - Branch bazlı PR iş akışına geçilmesi kod çakışmalarını sıfıra indirmiş, takımın paralel çalışma hızını artırmıştır. Bu standart sonraki sprintlerde de kesinlikle korunacaktır.
+  - Altyapı ve mimari inşasında bireysellikten ziyade takım bütünlüğü içinde hareket edilmesi, görev dağılımı ve yardımlaşma konusunda büyük bir ivme kazandırmıştır.
+  - Altyapının duman testleriyle (smoke test) doğrulanması sisteme güven vermiş olup, Sprint 3'te WebSocket ve diğer modüller eklendikçe otomatik test senaryolarının kapsamının daha da genişletilmesine karar verilmiştir.
 ---
 
 # Sprint 3
