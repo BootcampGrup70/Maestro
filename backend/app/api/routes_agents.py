@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_session
 from app.models.enums import AgentStatus
 from app.schemas.agent import AgentCreate, AgentPositionUpdate, AgentRead, AgentUpdate
-from app.services import agent_service
+from app.schemas.run import RunRead
+from app.services import agent_service, run_service
 from app.ws import events
 from app.ws.manager import get_manager
 
@@ -61,3 +62,41 @@ async def update_position(
 async def delete_agent(agent_id: str, session: AsyncSession = Depends(get_session)) -> None:
     agent = await _get_or_404(session, agent_id)
     await agent_service.delete_agent(session, agent)
+
+
+@router.post("/{agent_id}/cancel", status_code=status.HTTP_202_ACCEPTED)
+async def cancel_run(
+    agent_id: str, session: AsyncSession = Depends(get_session)
+) -> dict[str, str]:
+    await _get_or_404(session, agent_id)
+    if not run_service.cancel_run(agent_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Agent has no active run to cancel"
+        )
+    return {"status": "cancelling"}
+
+
+@router.post("/{agent_id}/restart", response_model=RunRead, status_code=status.HTTP_202_ACCEPTED)
+async def restart_run(
+    agent_id: str, session: AsyncSession = Depends(get_session)
+) -> object:
+    agent = await _get_or_404(session, agent_id)
+    try:
+        return await run_service.restart_run(session, agent)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post(
+    "/{agent_id}/restart-tree",
+    response_model=list[RunRead],
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def restart_tree(
+    agent_id: str, session: AsyncSession = Depends(get_session)
+) -> object:
+    agent = await _get_or_404(session, agent_id)
+    try:
+        return await run_service.restart_tree(session, agent)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc

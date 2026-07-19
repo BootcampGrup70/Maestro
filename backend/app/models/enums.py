@@ -43,6 +43,7 @@ class RunStatus(str, Enum):
     RUNNING = "running"
     DONE = "done"
     ERROR = "error"
+    CANCELLED = "cancelled"
 
 
 def enum_type(enum_cls: type[Enum], name: str) -> sa.Enum:

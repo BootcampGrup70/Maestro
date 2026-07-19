@@ -34,11 +34,11 @@
 
 ## 2. Runs & concurrency
 
-- [ ] Verify `Semaphore(2)` behavior with 3+ concurrent runs (extra runs stay `queued`)
-- [ ] Cancel/stop a running run (needed for crash-restart of a parent + its subagents)
-- [ ] Restart action: re-queue a run for an agent left in `error`
-- [ ] Parent crash -> stop subagents and restart together in one action (README requirement)
-- [ ] Track the running `asyncio.Task` per agent so it can be cancelled
+- [x] Verify `Semaphore(2)` behavior with 3+ concurrent runs (extra runs stay `queued`)
+- [x] Cancel/stop a running run (needed for crash-restart of a parent + its subagents)
+- [x] Restart action: re-queue a run for an agent left in `error`
+- [x] Parent crash -> stop subagents and restart together in one action (README requirement)
+- [x] Track the running `asyncio.Task` per agent so it can be cancelled
 
 ## 3. WebSocket / live updates
 

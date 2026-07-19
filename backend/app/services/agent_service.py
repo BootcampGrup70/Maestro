@@ -36,6 +36,18 @@ async def list_agents(session: AsyncSession) -> list[Agent]:
     return list(result.scalars().all())
 
 
+async def list_descendants(session: AsyncSession, agent_id: str) -> list[Agent]:
+    """All descendants (children, grandchildren, ...) of ``agent_id``, breadth-first."""
+    descendants: list[Agent] = []
+    frontier_ids = [agent_id]
+    while frontier_ids:
+        result = await session.execute(select(Agent).where(Agent.parent_id.in_(frontier_ids)))
+        batch = list(result.scalars().all())
+        descendants.extend(batch)
+        frontier_ids = [child.id for child in batch]
+    return descendants
+
+
 async def update_agent(session: AsyncSession, agent: Agent, data: AgentUpdate) -> Agent:
     updates = data.model_dump(exclude_unset=True)
     for key, value in updates.items():
