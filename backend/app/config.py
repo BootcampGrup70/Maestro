@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,7 +36,10 @@ class Settings(BaseSettings):
     max_concurrent_runs: int = 2
 
     # Allowed CORS origins for the local frontend.
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    cors_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
 
     # Create tables via SQLModel metadata on startup (dev convenience; use Alembic in prod).
     auto_create_tables: bool = True

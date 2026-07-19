@@ -32,6 +32,17 @@ class ConnectionManager:
         async with self._lock:
             self._connections.discard(websocket)
 
+    async def send_personal(self, websocket: WebSocket, event: WSEvent) -> None:
+        """Send an event to a single client (e.g. the connect snapshot or an error reply).
+
+        A dead socket is dropped rather than raised, mirroring ``broadcast``.
+        """
+        try:
+            await websocket.send_json(event.model_dump(mode="json"))
+        except Exception:  # noqa: BLE001 - a dead socket shouldn't break the caller
+            logger.debug("Dropping dead websocket connection")
+            await self.disconnect(websocket)
+
     async def broadcast(self, event: WSEvent) -> None:
         """Send an event to every connected client, dropping any that fail."""
         payload = event.model_dump(mode="json")
