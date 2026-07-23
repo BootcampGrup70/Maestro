@@ -13,6 +13,7 @@ interface AppState {
   updateAgentPosition: (id: string, x: number, y: number) => Promise<void>;
   removeAgent: (id: string) => Promise<void>;
   patchAgentLocal: (id: string, patch: Partial<Agent>) => void;
+  refreshAgent: (id: string) => Promise<void>;
 
   selectedAgentId: string | null;
   selectAgent: (id: string | null) => void;
@@ -65,6 +66,13 @@ export const useAppStore = create<AppState>((set) => ({
     }));
   },
 
+  // Polling ile agent durumunu (idle/thinking/tool_calling/done/error) tazeler.
+  // WebSocket entegrasyonu tamamlanınca bu fonksiyon yerine canlı olaylar kullanılacak.
+  refreshAgent: async (id) => {
+    const agent = await agentsApi.get(id);
+    set((state) => ({ agents: state.agents.map((a) => (a.id === id ? agent : a)) }));
+  },
+
   selectedAgentId: null,
   selectAgent: (id) => set({ selectedAgentId: id }),
 
@@ -78,7 +86,7 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       runsByAgent: {
         ...state.runsByAgent,
-        [agentId]: [...(state.runsByAgent[agentId] ?? []), run],
+        [agentId]: [run, ...(state.runsByAgent[agentId] ?? [])],
       },
     }));
     return run;

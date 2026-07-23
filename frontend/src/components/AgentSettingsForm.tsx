@@ -1,21 +1,27 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { agentsApi } from "../api/agents";
 import { buildAgentSettingsPayload, type AgentSettingsFormValues } from "../api/agentSettingsUtils";
 import type { Agent } from "../api/types";
 
+const FALLBACK_MODELS = ["qwen3:4b", "qwen3:8b", "qwen3.5:4b", "llama3.2:3b", "mistral:7b"];
+
 const defaultValues: AgentSettingsFormValues = {
+  model: "",
   temperature: "",
   max_tokens: "",
   system_prompt: "",
+  think: false,
 };
 
 function deriveInitialValues(initial?: Partial<Agent>): AgentSettingsFormValues {
   const settings = (initial?.settings ?? {}) as Record<string, unknown>;
   return {
     ...defaultValues,
+    model: initial?.model ?? "",
     temperature: (settings.temperature as string) ?? "",
     max_tokens: (settings.num_predict as string) ?? "",
     system_prompt: initial?.system_prompt ?? "",
+    think: Boolean(settings.think),
   };
 }
 
@@ -29,9 +35,19 @@ export default function AgentSettingsForm({ agentId, initialValues, onSaved }: P
   const [formValues, setFormValues] = useState<AgentSettingsFormValues>(() =>
     deriveInitialValues(initialValues)
   );
+  const [models, setModels] = useState<string[]>(FALLBACK_MODELS);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    agentsApi
+      .availableModels()
+      .then((list) => {
+        if (list.length > 0) setModels(list);
+      })
+      .catch(() => {});
+  }, []);
 
   const settingsPreview = useMemo(() => {
     try {
@@ -41,9 +57,15 @@ export default function AgentSettingsForm({ agentId, initialValues, onSaved }: P
     }
   }, [formValues]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormValues((current) => ({ ...current, [name]: value }));
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    setFormValues((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value,
+    }));
     setStatus("idle");
     setMessage("");
     setError("");
@@ -70,6 +92,34 @@ export default function AgentSettingsForm({ agentId, initialValues, onSaved }: P
     <form onSubmit={handleSubmit} className="max-w-lg mx-auto p-6 rounded-2xl bg-neutral-950 text-neutral-100 shadow-lg ring-1 ring-white/10">
       <h2 className="text-lg font-semibold mb-1">Editable Agent Settings</h2>
       <p className="text-sm text-neutral-400 mb-4">Tune the agent behavior for Ollama-compatible requests.</p>
+
+      <label className="block mb-3">
+        <span className="block mb-1 text-sm">Model</span>
+        <select
+          name="model"
+          value={formValues.model}
+          onChange={handleChange}
+          className="w-full px-3 py-2 rounded-lg border border-neutral-700 bg-neutral-900 text-sm"
+        >
+          <option value="">(değiştirme)</option>
+          {models.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex items-center gap-2 mb-3 cursor-pointer">
+        <input
+          type="checkbox"
+          name="think"
+          checked={Boolean(formValues.think)}
+          onChange={handleChange}
+          className="w-4 h-4"
+        />
+        <span className="text-sm">Reasoning (thinking) modu aktif</span>
+      </label>
 
       <label className="block mb-3">
         <span className="block mb-1 text-sm">Temperature</span>
