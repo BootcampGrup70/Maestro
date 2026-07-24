@@ -11,6 +11,7 @@ from app.schemas.agent import AgentCreate, AgentPositionUpdate, AgentRead, Agent
 from app.services import agent_service
 from app.ws import events
 from app.ws.manager import get_manager
+from app.services import ollama_client
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -26,12 +27,20 @@ async def _get_or_404(session: AsyncSession, agent_id: str):
 async def list_agents(session: AsyncSession = Depends(get_session)) -> list:
     return await agent_service.list_agents(session)
 
+@router.get("/available-models", response_model=list[str])
+async def list_available_models() -> list[str]:
+    """List models currently pulled in the local Ollama instance (for the '+' create dialog)."""
+    return await ollama_client.list_models()
+
 
 @router.post("", response_model=AgentRead, status_code=status.HTTP_201_CREATED)
 async def create_agent(
     data: AgentCreate, session: AsyncSession = Depends(get_session)
 ) -> object:
-    agent = await agent_service.create_agent(session, data)
+    try:
+        agent = await agent_service.create_agent(session, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await get_manager().broadcast(events.agent_status(agent.id, AgentStatus(agent.status)))
     return agent
 
