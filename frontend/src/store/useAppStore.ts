@@ -14,17 +14,27 @@ interface AppState {
   removeAgent: (id: string) => Promise<void>;
   patchAgentLocal: (id: string, patch: Partial<Agent>) => void;
   refreshAgent: (id: string) => Promise<void>;
+  updateAgentStatus: (id: string, status: string, errorMessage?: string) => void;
+  setAgentsSnapshot: (agents: Record<string, unknown>[]) => void;
 
   selectedAgentId: string | null;
   selectAgent: (id: string | null) => void;
 
   runsByAgent: Record<string, Run[]>;
+  activeRunByAgent: Record<string, string>;
   fetchRuns: (agentId: string) => Promise<void>;
   startRun: (agentId: string, prompt: string) => Promise<Run>;
+  setActiveRun: (agentId: string, runId: string) => void;
+  clearActiveRun: (agentId: string) => void;
 
   messagesByAgent: Record<string, Message[]>;
   fetchMessages: (agentId: string) => Promise<void>;
   appendMessageLocal: (agentId: string, message: Message) => void;
+  appendMessageDelta: (agentId: string, delta: string) => void;
+
+  toolCallsByAgent: Record<string, Record<string, unknown>[]>;
+  addToolCall: (agentId: string, toolCall: Record<string, unknown>) => void;
+  updateToolCall: (agentId: string, toolCall: Record<string, unknown>) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -66,21 +76,49 @@ export const useAppStore = create<AppState>((set) => ({
     }));
   },
 
-  // Polling ile agent durumunu (idle/thinking/tool_calling/done/error) tazeler.
-  // WebSocket entegrasyonu tamamlanınca bu fonksiyon yerine canlı olaylar kullanılacak.
   refreshAgent: async (id) => {
     const agent = await agentsApi.get(id);
-    set((state) => ({ agents: state.agents.map((a) => (a.id === id ? agent : a)) }));
+    set((state) => ({
+      agents: state.agents.map((a) => (a.id === id ? agent : a)),
+    }));
+  },
+
+updateAgentStatus: (id, status, errorMessage) => {
+  set((state) => ({
+    agents: state.agents.map((a) =>
+      a.id === id
+        ? { ...a, status: status as Agent["status"], error_message: errorMessage ?? null }
+        : a
+    ),
+  }));
+},
+
+  setAgentsSnapshot: (agentSnapshots) => {
+    set((state) => {
+      const updated = [...state.agents];
+      for (const snap of agentSnapshots) {
+        const idx = updated.findIndex((a) => a.id === snap.id);
+        if (idx !== -1) {
+          updated[idx] = { ...updated[idx], ...(snap as Partial<Agent>) };
+        }
+      }
+      return { agents: updated };
+    });
   },
 
   selectedAgentId: null,
   selectAgent: (id) => set({ selectedAgentId: id }),
 
   runsByAgent: {},
+  activeRunByAgent: {},
+
   fetchRuns: async (agentId) => {
     const runs = await runsApi.list(agentId);
-    set((state) => ({ runsByAgent: { ...state.runsByAgent, [agentId]: runs } }));
+    set((state) => ({
+      runsByAgent: { ...state.runsByAgent, [agentId]: runs },
+    }));
   },
+
   startRun: async (agentId, prompt) => {
     const run = await runsApi.start(agentId, prompt);
     set((state) => ({
@@ -92,16 +130,74 @@ export const useAppStore = create<AppState>((set) => ({
     return run;
   },
 
+  setActiveRun: (agentId, runId) => {
+    set((state) => ({
+      activeRunByAgent: { ...state.activeRunByAgent, [agentId]: runId },
+    }));
+  },
+
+  clearActiveRun: (agentId) => {
+    set((state) => {
+      const updated = { ...state.activeRunByAgent };
+      delete updated[agentId];
+      return { activeRunByAgent: updated };
+    });
+  },
+
   messagesByAgent: {},
+
   fetchMessages: async (agentId) => {
     const messages = await messagesApi.list(agentId);
-    set((state) => ({ messagesByAgent: { ...state.messagesByAgent, [agentId]: messages } }));
+    set((state) => ({
+      messagesByAgent: { ...state.messagesByAgent, [agentId]: messages },
+    }));
   },
+
   appendMessageLocal: (agentId, message) => {
     set((state) => ({
       messagesByAgent: {
         ...state.messagesByAgent,
         [agentId]: [...(state.messagesByAgent[agentId] ?? []), message],
+      },
+    }));
+  },
+
+  appendMessageDelta: (agentId, delta) => {
+    set((state) => {
+      const messages = state.messagesByAgent[agentId] ?? [];
+      if (messages.length === 0) return {};
+      const last = messages[messages.length - 1];
+      const updated = {
+        ...last,
+        content: (last.content ?? "") + delta,
+      };
+      return {
+        messagesByAgent: {
+          ...state.messagesByAgent,
+          [agentId]: [...messages.slice(0, -1), updated],
+        },
+      };
+    });
+  },
+
+  toolCallsByAgent: {},
+
+  addToolCall: (agentId, toolCall) => {
+    set((state) => ({
+      toolCallsByAgent: {
+        ...state.toolCallsByAgent,
+        [agentId]: [...(state.toolCallsByAgent[agentId] ?? []), toolCall],
+      },
+    }));
+  },
+
+  updateToolCall: (agentId, toolCall) => {
+    set((state) => ({
+      toolCallsByAgent: {
+        ...state.toolCallsByAgent,
+        [agentId]: (state.toolCallsByAgent[agentId] ?? []).map((tc) =>
+          tc.id === toolCall.id ? { ...tc, ...toolCall } : tc
+        ),
       },
     }));
   },
