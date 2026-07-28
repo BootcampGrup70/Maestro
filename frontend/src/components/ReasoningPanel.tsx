@@ -3,9 +3,10 @@ import { splitThinking } from "../api/parseThinking";
 
 interface Props {
   messages: Message[];
+  streamingThinking?: string;
 }
 
-export default function ReasoningPanel({ messages }: Props) {
+export default function ReasoningPanel({ messages, streamingThinking }: Props) {
   const withThinking = messages
     .map((m) => ({
       message: m,
@@ -13,7 +14,7 @@ export default function ReasoningPanel({ messages }: Props) {
     }))
     .filter((x) => x.thinking);
 
-  if (withThinking.length === 0) {
+  if (withThinking.length === 0 && !streamingThinking) {
     return (
       <div className="flex-1 flex items-center justify-center text-neutral-500 text-sm">
         Henüz bir reasoning (thinking) verisi yok.
@@ -29,6 +30,13 @@ export default function ReasoningPanel({ messages }: Props) {
           <pre className="whitespace-pre-wrap text-xs text-neutral-300 font-mono">{thinking}</pre>
         </div>
       ))}
+
+      {streamingThinking && (
+        <div className="rounded-lg bg-neutral-900 border border-purple-800/50 p-3">
+          <div className="text-xs text-purple-400 mb-1">Şu an düşünüyor...</div>
+          <pre className="whitespace-pre-wrap text-xs text-neutral-300 font-mono">{streamingThinking}</pre>
+        </div>
+      )}
     </div>
   );
 }

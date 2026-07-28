@@ -1,10 +1,12 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 import ReasoningPanel from "./ReasoningPanel";
 import AgentSettingsForm from "./AgentSettingsForm";
+import ToolCallSteps from "./ToolCallSteps";
 import type { Message } from "../api/types";
+import type { ToolCallState } from "../store/useAppStore";
 
 type Tab = "chat" | "reasoning" | "settings";
 
@@ -13,23 +15,22 @@ interface Props {
   onClose: () => void;
 }
 
-const POLL_INTERVAL_MS = 1500;
 const ACTIVE_STATUSES = new Set(["queued", "thinking", "tool_calling"]);
-// Zustand selector'da her render'da yeni [] oluşturmamak için sabit referans.
+// Zustand selector'da her render'da yeni [] oluşturmamak için sabit referanslar.
 const EMPTY_MESSAGES: Message[] = [];
+const EMPTY_TOOL_CALLS: ToolCallState[] = [];
 
 export default function AgentDetailPanel({ agentId, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
-  const [isPolling, setIsPolling] = useState(false);
 
   const agent = useAppStore((s) => s.agents.find((a) => a.id === agentId));
   const messages = useAppStore((s) => s.messagesByAgent[agentId] ?? EMPTY_MESSAGES);
+  const streaming = useAppStore((s) => s.streamingByAgent[agentId]);
+  const toolCalls = useAppStore((s) => s.toolCallsByAgent[agentId] ?? EMPTY_TOOL_CALLS);
   const fetchMessages = useAppStore((s) => s.fetchMessages);
   const fetchRuns = useAppStore((s) => s.fetchRuns);
   const startRun = useAppStore((s) => s.startRun);
   const refreshAgent = useAppStore((s) => s.refreshAgent);
-
-  const pollTimer = useRef<number | null>(null);
 
   useEffect(() => {
     fetchMessages(agentId);
@@ -37,34 +38,9 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
     refreshAgent(agentId);
   }, [agentId]);
 
-  useEffect(() => {
-    const shouldPoll = isPolling || (agent && ACTIVE_STATUSES.has(agent.status));
-
-    if (shouldPoll) {
-      pollTimer.current = window.setInterval(async () => {
-        await Promise.all([fetchMessages(agentId), refreshAgent(agentId)]);
-      }, POLL_INTERVAL_MS);
-    }
-
-    return () => {
-      if (pollTimer.current) {
-        window.clearInterval(pollTimer.current);
-        pollTimer.current = null;
-      }
-    };
-  }, [isPolling, agent?.status, agentId]);
-
-  useEffect(() => {
-    if (agent && !ACTIVE_STATUSES.has(agent.status)) {
-      setIsPolling(false);
-    }
-  }, [agent?.status]);
-
   const handleSend = async (prompt: string) => {
-    setIsPolling(true);
     await startRun(agentId, prompt);
     await fetchMessages(agentId);
-    await refreshAgent(agentId);
   };
 
   if (!agent) return null;
@@ -103,11 +79,14 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
       <div className="flex-1 flex flex-col min-h-0">
         {tab === "chat" && (
           <>
-            <ChatMessages messages={messages} />
+            <ChatMessages messages={messages} streamingContent={streaming?.content} />
+            <ToolCallSteps toolCalls={toolCalls} />
             <ChatInput disabled={isBusy} onSend={handleSend} />
           </>
         )}
-        {tab === "reasoning" && <ReasoningPanel messages={messages} />}
+        {tab === "reasoning" && (
+          <ReasoningPanel messages={messages} streamingThinking={streaming?.thinking} />
+        )}
         {tab === "settings" && (
           <div className="flex-1 overflow-y-auto py-4">
             <AgentSettingsForm

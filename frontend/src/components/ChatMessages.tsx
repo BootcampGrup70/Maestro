@@ -3,6 +3,7 @@ import { splitThinking } from "../api/parseThinking";
 
 interface Props {
   messages: Message[];
+  streamingContent?: string;
 }
 
 function roleStyles(role: Message["role"]) {
@@ -20,8 +21,14 @@ function roleStyles(role: Message["role"]) {
   }
 }
 
-export default function ChatMessages({ messages }: Props) {
-  if (messages.length === 0) {
+export default function ChatMessages({ messages, streamingContent }: Props) {
+  const visibleMessages = messages.filter((m) => {
+    const { content } = splitThinking(m.content);
+    // Sadece tool call taşıyan, metni olmayan ara assistant mesajlarını gizle.
+    return !(m.role === "assistant" && !content.trim());
+  });
+
+  if (visibleMessages.length === 0 && !streamingContent) {
     return (
       <div className="flex-1 flex items-center justify-center text-neutral-500 text-sm">
         Henüz mesaj yok. Aşağıdan bir talimat gönderin.
@@ -31,17 +38,26 @@ export default function ChatMessages({ messages }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-      {messages.map((m) => {
+      {visibleMessages.map((m) => {
         const { content } = splitThinking(m.content);
         return (
           <div key={m.id} className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${roleStyles(m.role)}`}>
             {m.role === "tool" && (
               <div className="text-xs font-semibold mb-1 uppercase tracking-wide">Tool result</div>
             )}
-            <div className="whitespace-pre-wrap">{content || "(boş cevap)"}</div>
+            <div className="whitespace-pre-wrap">{content}</div>
           </div>
         );
       })}
+
+      {streamingContent !== undefined && (
+        <div className="mr-auto max-w-[80%] rounded-xl px-3 py-2 text-sm bg-neutral-800 text-neutral-100">
+          <div className="whitespace-pre-wrap">
+            {splitThinking(streamingContent).content}
+            <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-neutral-400 animate-pulse align-middle" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

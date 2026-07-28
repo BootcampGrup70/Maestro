@@ -2,7 +2,19 @@
 import { agentsApi } from "../api/agents";
 import { runsApi } from "../api/runs";
 import { messagesApi } from "../api/messages";
-import type { Agent, AgentCreateInput, Run, Message } from "../api/types";
+import type { Agent, AgentCreateInput, AgentStatus, Run, Message } from "../api/types";
+
+interface StreamingState {
+  runId: string;
+  content: string;
+  thinking: string;
+}
+
+export interface ToolCallState {
+  id: string;
+  operation: string;
+  status: string;
+}
 
 interface AppState {
   agents: Agent[];
@@ -14,6 +26,9 @@ interface AppState {
   removeAgent: (id: string) => Promise<void>;
   patchAgentLocal: (id: string, patch: Partial<Agent>) => void;
   refreshAgent: (id: string) => Promise<void>;
+  applyAgentSnapshot: (
+    snapshot: { agent_id: string; status: string; error_message: string | null }[]
+  ) => void;
 
   selectedAgentId: string | null;
   selectAgent: (id: string | null) => void;
@@ -25,6 +40,15 @@ interface AppState {
   messagesByAgent: Record<string, Message[]>;
   fetchMessages: (agentId: string) => Promise<void>;
   appendMessageLocal: (agentId: string, message: Message) => void;
+
+  streamingByAgent: Record<string, StreamingState | undefined>;
+  startStreaming: (agentId: string, runId: string) => void;
+  appendStreamDelta: (agentId: string, kind: "content" | "thinking", delta: string) => void;
+  clearStreaming: (agentId: string) => void;
+
+  toolCallsByAgent: Record<string, ToolCallState[]>;
+  upsertToolCall: (agentId: string, id: string, operation: string) => void;
+  updateToolCallStatus: (agentId: string, id: string, status: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -66,11 +90,20 @@ export const useAppStore = create<AppState>((set) => ({
     }));
   },
 
-  // Polling ile agent durumunu (idle/thinking/tool_calling/done/error) tazeler.
-  // WebSocket entegrasyonu tamamlanınca bu fonksiyon yerine canlı olaylar kullanılacak.
   refreshAgent: async (id) => {
     const agent = await agentsApi.get(id);
     set((state) => ({ agents: state.agents.map((a) => (a.id === id ? agent : a)) }));
+  },
+
+  applyAgentSnapshot: (snapshot) => {
+    set((state) => ({
+      agents: state.agents.map((a) => {
+        const found = snapshot.find((x) => x.agent_id === a.id);
+        return found
+          ? { ...a, status: found.status as AgentStatus, error_message: found.error_message }
+          : a;
+      }),
+    }));
   },
 
   selectedAgentId: null,
@@ -102,6 +135,55 @@ export const useAppStore = create<AppState>((set) => ({
       messagesByAgent: {
         ...state.messagesByAgent,
         [agentId]: [...(state.messagesByAgent[agentId] ?? []), message],
+      },
+    }));
+  },
+
+  streamingByAgent: {},
+  startStreaming: (agentId, runId) => {
+    set((state) => ({
+      streamingByAgent: {
+        ...state.streamingByAgent,
+        [agentId]: { runId, content: "", thinking: "" },
+      },
+    }));
+  },
+  appendStreamDelta: (agentId, kind, delta) => {
+    set((state) => {
+      const current = state.streamingByAgent[agentId];
+      if (!current) return {};
+      return {
+        streamingByAgent: {
+          ...state.streamingByAgent,
+          [agentId]: { ...current, [kind]: current[kind] + delta },
+        },
+      };
+    });
+  },
+  clearStreaming: (agentId) => {
+    set((state) => {
+      const next = { ...state.streamingByAgent };
+      delete next[agentId];
+      return { streamingByAgent: next };
+    });
+  },
+
+  toolCallsByAgent: {},
+  upsertToolCall: (agentId, id, operation) => {
+    set((state) => ({
+      toolCallsByAgent: {
+        ...state.toolCallsByAgent,
+        [agentId]: [...(state.toolCallsByAgent[agentId] ?? []), { id, operation, status: "pending" }],
+      },
+    }));
+  },
+  updateToolCallStatus: (agentId, id, status) => {
+    set((state) => ({
+      toolCallsByAgent: {
+        ...state.toolCallsByAgent,
+        [agentId]: (state.toolCallsByAgent[agentId] ?? []).map((tc) =>
+          tc.id === id ? { ...tc, status } : tc
+        ),
       },
     }));
   },

@@ -1,9 +1,12 @@
 ﻿import { useEffect } from "react";
 import { useAppStore } from "./store/useAppStore";
+import { useWebSocket } from "./hooks/useWebSocket";
 import AgentDetailPanel from "./components/AgentDetailPanel";
 
 function App() {
   const { agents, fetchAgents, selectedAgentId, selectAgent } = useAppStore();
+
+  useWebSocket();
 
   useEffect(() => {
     fetchAgents();
