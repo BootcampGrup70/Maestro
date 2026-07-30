@@ -28,3 +28,15 @@ def client() -> Iterator[TestClient]:
     """A TestClient that runs the app lifespan (creates tables on the temp DB)."""
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture(autouse=True)
+def _mock_ollama_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests must not depend on a live Ollama instance or whatever models happen to be
+    pulled on the developer's machine. Every test gets a fixed, predictable model list.
+    """
+
+    async def _fake_list_models() -> list[str]:
+        return ["llama3", "qwen3:4b", "qwen3:8b"]
+
+    monkeypatch.setattr("app.services.ollama_client.list_models", _fake_list_models)

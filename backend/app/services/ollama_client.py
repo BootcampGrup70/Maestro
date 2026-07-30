@@ -70,3 +70,10 @@ async def stream_chat(
             tc if isinstance(tc, dict) else tc.model_dump() for tc in raw_tool_calls
         ]
         yield ChatChunk(content=content, thinking=thinking, tool_calls=tool_calls, done=done)
+
+
+async def list_models() -> list[str]:
+    """Return the names of models currently pulled into the local Ollama instance."""
+    client = get_client()
+    response = await client.list()
+    return [model.model for model in response.models if model.model]

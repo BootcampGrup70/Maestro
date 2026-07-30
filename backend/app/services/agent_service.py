@@ -9,9 +9,13 @@ from app.core.time import now_ms
 from app.models.agent import Agent
 from app.models.enums import AgentStatus
 from app.schemas.agent import AgentCreate, AgentUpdate
-
+from app.services import ollama_client
 
 async def create_agent(session: AsyncSession, data: AgentCreate) -> Agent:
+    available_models = await ollama_client.list_models()
+    if data.model not in available_models:
+        raise ValueError(f"Model '{data.model}' is not available in Ollama.")
+
     agent = Agent(
         name=data.name,
         model=data.model,
