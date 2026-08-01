@@ -4,8 +4,9 @@ import Canvas from "./components/canvas";
 import AgentDetailPanel from "./components/AgentDetailPanel";
 import Sidebar from "./components/Sidebar";
 import SettingsPage from "./components/SettingsPage";
+import LibraryPage from "./components/LibraryPage";
 
-type View = "orchestrate" | "settings";
+type View = "orchestrate" | "settings" | "library";
 
 function App() {
   const [view, setView] = useState<View>("orchestrate");
@@ -19,6 +20,7 @@ function App() {
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         {view === "orchestrate" && <Canvas />}
         {view === "settings" && <SettingsPage />}
+        {view === "library" && <LibraryPage onImported={() => setView("orchestrate")} />}
       </div>
 
       {selectedAgentId && view === "orchestrate" && (

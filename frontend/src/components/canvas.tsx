@@ -14,6 +14,7 @@ import "@xyflow/react/dist/style.css";
 import { useAppStore } from "../store/useAppStore";
 import { useWebSocket } from "../hooks/useWebSocket";
 import CreateAgentModal from "./CreateAgentModal";
+import PublishToLibraryModal from "./PublishToLibraryModal";
 
 const STATUS_COLOR: Record<string, string> = {
   idle: "#6b7280",
@@ -88,6 +89,8 @@ export default function Canvas() {
   const updateAgentPosition = useAppStore((s) => s.updateAgentPosition);
   const selectAgent = useAppStore((s) => s.selectAgent);
   const [showModal, setShowModal] = useState(false);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   const { send } = useWebSocket();
   void send;
@@ -134,8 +137,16 @@ export default function Canvas() {
   );
 
   const onNodeClick = useCallback(
-    (_: unknown, node: Node) => selectAgent(node.id),
+    (event: React.MouseEvent, node: Node) => {
+      if (event.shiftKey || event.ctrlKey || event.metaKey) return;
+      selectAgent(node.id);
+    },
     [selectAgent]
+  );
+
+  const onSelectionChange = useCallback(
+    ({ nodes: selected }: { nodes: Node[] }) => setSelectedNodeIds(selected.map((n) => n.id)),
+    []
   );
 
   return (
@@ -149,6 +160,17 @@ export default function Canvas() {
         }}
       >
         + Create Agent
+      </button>
+
+      <button
+        onClick={() => setShowPublishModal(true)}
+        style={{
+          position: "absolute", top: "16px", right: "16px", zIndex: 10,
+          background: "#3b82f6", color: "white", border: "none",
+          borderRadius: "6px", padding: "8px 16px", cursor: "pointer", fontSize: "14px",
+        }}
+      >
+        Publish to Library{selectedNodeIds.length > 0 ? ` (${selectedNodeIds.length})` : ""}
       </button>
 
       {agents.length === 0 && (
@@ -172,6 +194,7 @@ export default function Canvas() {
         onNodeDragStop={onNodeDragStop}
         onNodesDelete={onNodesDelete}
         onNodeClick={onNodeClick}
+        onSelectionChange={onSelectionChange}
         nodeTypes={nodeTypes}
         fitView
       >
@@ -180,6 +203,17 @@ export default function Canvas() {
       </ReactFlow>
 
       {showModal && <CreateAgentModal onClose={() => setShowModal(false)} />}
+      {showPublishModal && (
+        <PublishToLibraryModal
+          initialSelectedIds={selectedNodeIds}
+          onClose={() => setShowPublishModal(false)}
+          onPublished={() => {
+            setSelectedNodeIds([]);
+            setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+            setShowPublishModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-type View = "orchestrate" | "settings";
+type View = "orchestrate" | "settings" | "library";
 
 interface Props {
   activeView: View;
@@ -41,6 +41,14 @@ export default function Sidebar({ activeView, onViewChange }: Props) {
         style={btnStyle(activeView === "orchestrate")}
       >
         ◈
+      </button>
+
+      <button
+        onClick={() => onViewChange("library")}
+        title="Library"
+        style={btnStyle(activeView === "library")}
+      >
+        ▤
       </button>
 
       <button

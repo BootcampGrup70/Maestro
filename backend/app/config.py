@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Max agents running concurrently (README: 2 concurrent Ollama models).
     max_concurrent_runs: int = 2
 
+    # Neon (cloud Postgres) connection for the shared workflow library.
+    neon_database_url: str = ""
+
     # Allowed CORS origins for the local frontend.
     cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",

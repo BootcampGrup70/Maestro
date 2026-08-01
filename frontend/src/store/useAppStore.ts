@@ -3,7 +3,18 @@ import { agentsApi } from "../api/agents";
 import { runsApi } from "../api/runs";
 import { messagesApi } from "../api/messages";
 import { toolCallsApi } from "../api/toolCalls";
-import type { Agent, AgentCreateInput, Run, Message, ToolCall } from "../api/types";
+import { libraryApi } from "../api/library";
+import type {
+  Agent,
+  AgentCreateInput,
+  Run,
+  Message,
+  ToolCall,
+  LibraryWorkflow,
+  WorkflowPublishInput,
+  WorkflowImportInput,
+  WorkflowImportResult,
+} from "../api/types";
 
 interface AppState {
   agents: Agent[];
@@ -37,6 +48,14 @@ interface AppState {
   fetchToolCalls: (agentId: string) => Promise<void>;
   addToolCall: (agentId: string, toolCall: Record<string, unknown>) => void;
   updateToolCall: (agentId: string, toolCall: Record<string, unknown>) => void;
+
+  libraryWorkflows: LibraryWorkflow[];
+  libraryLoading: boolean;
+  libraryError: string | null;
+  fetchLibraryWorkflows: (params?: { tag?: string; search?: string }) => Promise<void>;
+  publishWorkflow: (data: WorkflowPublishInput) => Promise<LibraryWorkflow>;
+  deleteLibraryWorkflow: (id: string) => Promise<void>;
+  importWorkflow: (id: string, data?: WorkflowImportInput) => Promise<WorkflowImportResult>;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -199,5 +218,38 @@ updateAgentStatus: (id, status, errorMessage) => {
 
   updateToolCall: (agentId) => {
     void useAppStore.getState().fetchToolCalls(agentId);
+  },
+
+  libraryWorkflows: [],
+  libraryLoading: false,
+  libraryError: null,
+
+  fetchLibraryWorkflows: async (params) => {
+    set({ libraryLoading: true, libraryError: null });
+    try {
+      const libraryWorkflows = await libraryApi.list(params);
+      set({ libraryWorkflows, libraryLoading: false });
+    } catch (err) {
+      set({ libraryError: (err as Error).message, libraryLoading: false });
+    }
+  },
+
+  publishWorkflow: async (data) => {
+    const workflow = await libraryApi.publish(data);
+    set((state) => ({ libraryWorkflows: [workflow, ...state.libraryWorkflows] }));
+    return workflow;
+  },
+
+  deleteLibraryWorkflow: async (id) => {
+    await libraryApi.delete(id);
+    set((state) => ({
+      libraryWorkflows: state.libraryWorkflows.filter((w) => w.id !== id),
+    }));
+  },
+
+  importWorkflow: async (id, data) => {
+    const result = await libraryApi.import(id, data);
+    await useAppStore.getState().fetchAgents();
+    return result;
   },
 }));

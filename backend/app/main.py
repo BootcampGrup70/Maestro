@@ -12,10 +12,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import routes_agents, routes_health, routes_messages, routes_runs, routes_tool_calls
+from app.api import (
+    routes_agents,
+    routes_health,
+    routes_library,
+    routes_messages,
+    routes_runs,
+    routes_tool_calls,
+)
 from app.config import get_settings
 from app.core.startup import normalize_stale_state
 from app.db import SessionLocal, create_db_and_tables
+from app.neon_db import create_neon_tables
 from app.ws import routes_ws
 
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +34,7 @@ async def lifespan(_app: FastAPI):
     settings = get_settings()
     if settings.auto_create_tables:
         await create_db_and_tables()
+        await create_neon_tables()
     async with SessionLocal() as session:
         await normalize_stale_state(session)
     yield
@@ -48,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_messages.router, prefix="/api")
     app.include_router(routes_runs.router, prefix="/api")
     app.include_router(routes_tool_calls.router, prefix="/api")
+    app.include_router(routes_library.router, prefix="/api")
     app.include_router(routes_ws.router)  # /ws (no /api prefix)
 
     return app

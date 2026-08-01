@@ -9,6 +9,7 @@ reasoning to the frontend over a **WebSocket**, and persists everything to **SQL
 - **FastAPI** + async, WebSocket for live updates
 - **SQLModel** models + **Alembic** migrations, async engine via **aiosqlite**
 - Official **`ollama`** async client
+- Optional **Neon (cloud Postgres)** connection for the shared workflow library
 - Managed with **`uv`**
 
 ## Layout
@@ -17,16 +18,30 @@ reasoning to the frontend over a **WebSocket**, and persists everything to **SQL
 app/
   main.py         # app factory + lifespan (startup normalization)
   config.py       # settings (env-driven)
-  db.py           # async engine + session dependency
-  models/         # SQLModel tables (mirror ../database.md)
+  db.py           # async engine + session dependency (local SQLite)
+  neon_db.py      # async engine + session dependency (Neon, optional — library feature)
+  models/         # SQLModel tables (mirror ../database.md), incl. library_workflow/library_agent
   schemas/        # request/response DTOs + WebSocket event envelope
-  api/            # HTTP routers (health, agents, messages, runs)
+  api/            # HTTP routers (health, agents, messages, runs, tool_calls, library)
   ws/             # ConnectionManager + /ws endpoint + event builders
-  services/       # agent_service, run_service, ollama_client, tools/
+  services/       # agent_service, run_service, ollama_client, tools/, library_service
   core/           # ids, time, concurrency, startup normalization
 alembic/          # migration environment + versions
 tests/            # smoke tests
 ```
+
+### Shared workflow library
+
+`GET/POST /api/library`, `GET/PATCH/DELETE /api/library/{id}`, and
+`POST /api/library/{id}/import` let a user publish a snapshot of local agents
+(as a named, taggable "workflow") to a shared **Neon Postgres** database, browse
+what others have published, and import a workflow back as new local agents
+(IDs regenerated, parent/child structure preserved). Local agent/run/message
+data always stays in SQLite — Neon only stores published workflow snapshots.
+
+This feature is optional: without `MAESTRO_NEON_DATABASE_URL` set (see
+`.env.example`), the rest of the app runs normally and `/api/library/*`
+endpoints return `503`.
 
 ## Setup
 

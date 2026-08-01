@@ -76,3 +76,54 @@ export interface HealthStatus {
   version: string;
   ollama_reachable?: boolean;
 }
+
+export interface LibraryAgentRead {
+  id: string;
+  workflow_id: string;
+  name: string;
+  model: string;
+  system_prompt: string | null;
+  settings: Record<string, unknown>;
+  canvas_x: number;
+  canvas_y: number;
+  local_ref: string;
+  parent_local_ref: string | null;
+}
+
+export interface LibraryWorkflow {
+  id: string;
+  name: string;
+  description: string | null;
+  tags: string[];
+  agent_count: number;
+  import_count: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface LibraryWorkflowDetail extends LibraryWorkflow {
+  agents: LibraryAgentRead[];
+}
+
+export interface WorkflowPublishInput {
+  name: string;
+  description?: string;
+  tags?: string[];
+  agent_ids: string[];
+}
+
+export interface WorkflowUpdateInput {
+  name?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface WorkflowImportInput {
+  offset_x?: number;
+  offset_y?: number;
+}
+
+export interface WorkflowImportResult {
+  imported_agents: number;
+  agent_ids: string[];
+}
