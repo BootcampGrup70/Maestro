@@ -2,6 +2,8 @@
 export type AgentStatus = "idle" | "thinking" | "tool_calling" | "error" | "done" | "queued";
 export type RunStatus = "queued" | "running" | "done" | "error";
 export type MessageRole = "user" | "assistant" | "system" | "tool";
+export type ToolOperation = "read" | "write";
+export type ToolCallStatus = "pending" | "success" | "error";
 
 export interface Agent {
   id: string;
@@ -53,6 +55,19 @@ export interface Message {
   role: MessageRole;
   content: string | null;
   thinking: string | null;
+  created_at: number;
+}
+
+export interface ToolCall {
+  id: string;
+  agent_id: string;
+  message_id: string | null;
+  tool_name: string;
+  operation: ToolOperation;
+  arguments: Record<string, unknown>;
+  result: string | null;
+  status: ToolCallStatus;
+  error_message: string | null;
   created_at: number;
 }
 

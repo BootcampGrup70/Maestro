@@ -2,7 +2,8 @@
 import { agentsApi } from "../api/agents";
 import { runsApi } from "../api/runs";
 import { messagesApi } from "../api/messages";
-import type { Agent, AgentCreateInput, Run, Message } from "../api/types";
+import { toolCallsApi } from "../api/toolCalls";
+import type { Agent, AgentCreateInput, Run, Message, ToolCall } from "../api/types";
 
 interface AppState {
   agents: Agent[];
@@ -32,7 +33,8 @@ interface AppState {
   appendMessageLocal: (agentId: string, message: Message) => void;
   appendMessageDelta: (agentId: string, delta: string) => void;
 
-  toolCallsByAgent: Record<string, Record<string, unknown>[]>;
+  toolCallsByAgent: Record<string, ToolCall[]>;
+  fetchToolCalls: (agentId: string) => Promise<void>;
   addToolCall: (agentId: string, toolCall: Record<string, unknown>) => void;
   updateToolCall: (agentId: string, toolCall: Record<string, unknown>) => void;
 }
@@ -182,23 +184,20 @@ updateAgentStatus: (id, status, errorMessage) => {
 
   toolCallsByAgent: {},
 
-  addToolCall: (agentId, toolCall) => {
+  fetchToolCalls: async (agentId) => {
+    const toolCalls = await toolCallsApi.list(agentId);
     set((state) => ({
-      toolCallsByAgent: {
-        ...state.toolCallsByAgent,
-        [agentId]: [...(state.toolCallsByAgent[agentId] ?? []), toolCall],
-      },
+      toolCallsByAgent: { ...state.toolCallsByAgent, [agentId]: toolCalls },
     }));
   },
 
-  updateToolCall: (agentId, toolCall) => {
-    set((state) => ({
-      toolCallsByAgent: {
-        ...state.toolCallsByAgent,
-        [agentId]: (state.toolCallsByAgent[agentId] ?? []).map((tc) =>
-          tc.id === toolCall.id ? { ...tc, ...toolCall } : tc
-        ),
-      },
-    }));
+  // WS payloads only carry a partial shape ({tool_call_id, operation}/{tool_call_id, status}),
+  // not a full ToolCall row - refetch from the REST endpoint rather than merging by id.
+  addToolCall: (agentId) => {
+    void useAppStore.getState().fetchToolCalls(agentId);
+  },
+
+  updateToolCall: (agentId) => {
+    void useAppStore.getState().fetchToolCalls(agentId);
   },
 }));

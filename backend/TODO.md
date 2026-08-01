@@ -18,19 +18,19 @@
 
 ---
 
-## 1. Tool-calling (highest priority - main open stub)
+## 1. Tool-calling (implemented)
 
-- [ ] Implement `run_service._handle_tool_calls` (`app/services/run_service.py`) `(stub)`
-  - [ ] Flip agent status to `tool_calling` + broadcast `agent_status`
-  - [ ] Insert a `tool_calls` row per call (status `pending`) + broadcast `tool_call_created`
-  - [ ] Dispatch via `services/tools/registry.dispatch` (filesystem read/write)
-  - [ ] Update the row (`success`/`error`, result/error_message) + broadcast `tool_call_updated`
-  - [ ] Append a `tool`-role message with the result and re-invoke the model in a loop
-    ```
-    until no more tool calls are returned
-    ```
+- [x] `run_service._handle_tool_calls` (`app/services/run_service.py`)
+  - [x] Flip agent status to `tool_calling` + broadcast `agent_status`
+  - [x] Insert a `tool_calls` row per call (status `pending`) + broadcast `tool_call_created`
+  - [x] Dispatch via `services/tools/registry.dispatch` (filesystem read/write)
+  - [x] Update the row (`success`/`error`, result/error_message) + broadcast `tool_call_updated`
+  - [x] Append a `tool`-role message with the result and re-invoke the model in a loop
+    (`MAX_ITERATIONS = 10`, guards against infinite loops)
+- [x] `GET /api/agents/{id}/tool-calls` (`app/api/routes_tool_calls.py`) + frontend `tools` tab
+  in `AgentDetailPanel` - lets a user verify what the model actually did vs. what it claimed in
+  chat (local models occasionally narrate a file write without emitting the tool call at all)
 - [ ] Confirm the sandbox in `services/tools/filesystem.py` rejects path escapes (tests below)
-- [ ] Decide max tool-call iterations per run (guard against infinite loops)
 
 ## 2. Runs & concurrency
 

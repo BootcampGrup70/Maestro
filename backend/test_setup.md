@@ -119,7 +119,6 @@ Expect `"status": "done"` (or `"error"` with `error_message` populated).
 
 Per `TODO.md`, these are still stubs — don't treat their absence as a bug:
 
-- Tool-calling (`run_service._handle_tool_calls` is a no-op logger)
 - Cancel/stop a run, restart-after-error, parent/subagent crash cascade
 - Inbound WebSocket messages (user interjecting mid-run)
 - Model-exists validation on agent create, listing available Ollama models

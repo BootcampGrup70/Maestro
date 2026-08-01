@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import routes_agents, routes_health, routes_messages, routes_runs
+from app.api import routes_agents, routes_health, routes_messages, routes_runs, routes_tool_calls
 from app.config import get_settings
 from app.core.startup import normalize_stale_state
 from app.db import SessionLocal, create_db_and_tables
@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_agents.router, prefix="/api")
     app.include_router(routes_messages.router, prefix="/api")
     app.include_router(routes_runs.router, prefix="/api")
+    app.include_router(routes_tool_calls.router, prefix="/api")
     app.include_router(routes_ws.router)  # /ws (no /api prefix)
 
     return app

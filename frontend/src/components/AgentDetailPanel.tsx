@@ -3,10 +3,11 @@ import { useAppStore } from "../store/useAppStore";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 import ReasoningPanel from "./ReasoningPanel";
+import ToolCallsPanel from "./ToolCallsPanel";
 import AgentSettingsForm from "./AgentSettingsForm";
-import type { Message } from "../api/types";
+import type { Message, ToolCall } from "../api/types";
 
-type Tab = "chat" | "reasoning" | "settings";
+type Tab = "chat" | "reasoning" | "tools" | "settings";
 
 interface Props {
   agentId: string;
@@ -17,6 +18,7 @@ const POLL_INTERVAL_MS = 1500;
 const ACTIVE_STATUSES = new Set(["queued", "thinking", "tool_calling"]);
 // Zustand selector'da her render'da yeni [] oluşturmamak için sabit referans.
 const EMPTY_MESSAGES: Message[] = [];
+const EMPTY_TOOL_CALLS: ToolCall[] = [];
 
 export default function AgentDetailPanel({ agentId, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
@@ -24,7 +26,9 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
 
   const agent = useAppStore((s) => s.agents.find((a) => a.id === agentId));
   const messages = useAppStore((s) => s.messagesByAgent[agentId] ?? EMPTY_MESSAGES);
+  const toolCalls = useAppStore((s) => s.toolCallsByAgent[agentId] ?? EMPTY_TOOL_CALLS);
   const fetchMessages = useAppStore((s) => s.fetchMessages);
+  const fetchToolCalls = useAppStore((s) => s.fetchToolCalls);
   const fetchRuns = useAppStore((s) => s.fetchRuns);
   const startRun = useAppStore((s) => s.startRun);
   const refreshAgent = useAppStore((s) => s.refreshAgent);
@@ -33,6 +37,7 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
 
   useEffect(() => {
     fetchMessages(agentId);
+    fetchToolCalls(agentId);
     fetchRuns(agentId);
     refreshAgent(agentId);
   }, [agentId]);
@@ -42,7 +47,7 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
 
     if (shouldPoll) {
       pollTimer.current = window.setInterval(async () => {
-        await Promise.all([fetchMessages(agentId), refreshAgent(agentId)]);
+        await Promise.all([fetchMessages(agentId), fetchToolCalls(agentId), refreshAgent(agentId)]);
       }, POLL_INTERVAL_MS);
     }
 
@@ -64,6 +69,7 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
     setIsPolling(true);
     await startRun(agentId, prompt);
     await fetchMessages(agentId);
+    await fetchToolCalls(agentId);
     await refreshAgent(agentId);
   };
 
@@ -87,7 +93,7 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
       </div>
 
       <div className="flex border-b border-neutral-800">
-        {(["chat", "reasoning", "settings"] as Tab[]).map((t) => (
+        {(["chat", "reasoning", "tools", "settings"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -108,6 +114,7 @@ export default function AgentDetailPanel({ agentId, onClose }: Props) {
           </>
         )}
         {tab === "reasoning" && <ReasoningPanel messages={messages} />}
+        {tab === "tools" && <ToolCallsPanel toolCalls={toolCalls} />}
         {tab === "settings" && (
           <div className="flex-1 overflow-y-auto py-4">
             <AgentSettingsForm

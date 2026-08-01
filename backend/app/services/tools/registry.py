@@ -15,8 +15,11 @@ from app.services.tools import filesystem
 TOOL_SCHEMAS: list[dict] = [filesystem.FILESYSTEM_TOOL_SCHEMA]
 
 
-def dispatch(tool_name: str, arguments: dict[str, Any]) -> str:
+def dispatch(tool_name: str, arguments: dict[str, Any], workspace_dir: str | None = None) -> str:
     """Execute a tool call and return its textual result.
+
+    ``workspace_dir`` overrides the sandbox root for this call (an agent's configured
+    ``settings["workspace_dir"]``); ``None`` falls back to the global ``MAESTRO_WORKSPACE_DIR``.
 
     Raises ``filesystem.FilesystemToolError`` on failure; callers should persist the
     error onto the corresponding ``tool_calls`` row.
@@ -26,7 +29,7 @@ def dispatch(tool_name: str, arguments: dict[str, Any]) -> str:
 
     operation = arguments.get("operation")
     if operation == ToolOperation.READ.value:
-        return filesystem.read_file(arguments["path"])
+        return filesystem.read_file(arguments["path"], workspace_dir)
     if operation == ToolOperation.WRITE.value:
-        return filesystem.write_file(arguments["path"], arguments.get("content", ""))
+        return filesystem.write_file(arguments["path"], arguments.get("content", ""), workspace_dir)
     raise filesystem.FilesystemToolError(f"Unknown operation: {operation!r}")

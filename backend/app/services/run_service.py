@@ -67,6 +67,15 @@ async def _persist_message(
     return message
 
 
+def _model_options(agent: Agent) -> dict[str, Any]:
+    """Agent settings minus keys that aren't Ollama model options.
+
+    ``workspace_dir`` (the filesystem tool's per-agent sandbox root) lives in the same
+    ``settings`` blob but must not leak into the ``options`` payload sent to Ollama.
+    """
+    return {k: v for k, v in agent.settings.items() if k != "workspace_dir"}
+
+
 async def _build_history(session: AsyncSession, agent: Agent) -> list[dict[str, Any]]:
     """Assemble the Ollama chat history from persisted messages (+ system prompt)."""
     messages: list[dict[str, Any]] = []
@@ -155,7 +164,7 @@ async def _execute_run(run_id: str, agent_id: str) -> None:
                 async for chunk in ollama_client.stream_chat(
                     model=agent.model,
                     messages=history,
-                    options=agent.settings,
+                    options=_model_options(agent),
                     tools=TOOL_SCHEMAS,
                     think=bool(agent.settings.get("think", False)),
                 ):
@@ -172,20 +181,24 @@ async def _execute_run(run_id: str, agent_id: str) -> None:
                     if chunk.tool_calls:
                         pending_tool_calls.extend(chunk.tool_calls)
 
-                message = await _persist_message(
-                    session,
-                    agent_id,
-                    MessageRole.ASSISTANT,
-                    content="".join(content_parts) or None,
-                    thinking="".join(thinking_parts) or None,
-                )
-                await manager.broadcast(
-                    events.message_created(agent_id, message.id, message.seq, message.role.value)
-                )
+                # Skip persisting a message when the model said nothing (e.g. a turn that's
+                # purely a tool call) - an empty assistant bubble has nothing worth showing.
+                message: Message | None = None
+                if content_parts or thinking_parts:
+                    message = await _persist_message(
+                        session,
+                        agent_id,
+                        MessageRole.ASSISTANT,
+                        content="".join(content_parts) or None,
+                        thinking="".join(thinking_parts) or None,
+                    )
+                    await manager.broadcast(
+                        events.message_created(
+                            agent_id, message.id, message.seq, message.role.value
+                        )
+                    )
 
                 if pending_tool_calls:
-                    # TODO(team): execute tool calls, persist tool_calls rows, feed results
-                    # back to the model, and continue the loop until no tool calls remain.
                     await _handle_tool_calls(session, agent, message, pending_tool_calls)
 
                 run.status = RunStatus.DONE
@@ -220,7 +233,7 @@ async def _execute_run(run_id: str, agent_id: str) -> None:
 async def _handle_tool_calls(
     session: AsyncSession,
     agent: Agent,
-    message: Message,
+    message: Message | None,
     tool_calls: list[dict[str, Any]],
 ) -> None:
     """Tool-calling lifecycle: execute tools, persist results, re-invoke model until done."""
@@ -232,6 +245,7 @@ async def _handle_tool_calls(
     manager = get_manager()
     MAX_ITERATIONS = 10
     iteration = 0
+    workspace_dir = agent.settings.get("workspace_dir") or None
 
     # Agent durumunu tool_calling yap
     await agent_service.set_status(session, agent, AgentStatus.TOOL_CALLING)
@@ -252,7 +266,7 @@ async def _handle_tool_calls(
             # DB'ye pending olarak kaydet
             tc = ToolCall(
                 agent_id=agent.id,
-                message_id=message.id,
+                message_id=message.id if message else None,
                 tool_name=tool_name,
                 operation=operation,
                 arguments=arguments,
@@ -268,7 +282,7 @@ async def _handle_tool_calls(
 
             # Tool'u çalıştır
             try:
-                result = dispatch(tool_name, arguments)
+                result = dispatch(tool_name, arguments, workspace_dir)
                 tc.status = ToolCallStatus.SUCCESS
                 tc.result = result
             except (FilesystemToolError, Exception) as exc:
@@ -301,7 +315,7 @@ async def _handle_tool_calls(
         async for chunk in ollama_client.stream_chat(
             model=agent.model,
             messages=history,
-            options=agent.settings,
+            options=_model_options(agent),
             tools=TOOL_SCHEMAS,
             think=bool(agent.settings.get("think", False)),
         ):
@@ -315,7 +329,7 @@ async def _handle_tool_calls(
             if chunk.tool_calls:
                 current_tool_calls.extend(chunk.tool_calls)
 
-        # Yeni mesajı kaydet
+        # Yeni mesajı kaydet (skip when the model said nothing but call another tool)
         if content_parts or thinking_parts:
             message = await _persist_message(
                 session,

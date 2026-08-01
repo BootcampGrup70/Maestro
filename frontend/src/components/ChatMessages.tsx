@@ -21,7 +21,11 @@ function roleStyles(role: Message["role"]) {
 }
 
 export default function ChatMessages({ messages }: Props) {
-  if (messages.length === 0) {
+  // Turns that were purely a tool call (no text from the model) have no content worth
+  // showing as a chat bubble - skip them instead of rendering an empty placeholder.
+  const visible = messages.filter((m) => splitThinking(m.content).content.trim().length > 0);
+
+  if (visible.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-neutral-500 text-sm">
         Henüz mesaj yok. Aşağıdan bir talimat gönderin.
@@ -31,14 +35,14 @@ export default function ChatMessages({ messages }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-      {messages.map((m) => {
+      {visible.map((m) => {
         const { content } = splitThinking(m.content);
         return (
           <div key={m.id} className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${roleStyles(m.role)}`}>
             {m.role === "tool" && (
               <div className="text-xs font-semibold mb-1 uppercase tracking-wide">Tool result</div>
             )}
-            <div className="whitespace-pre-wrap">{content || "(boş cevap)"}</div>
+            <div className="whitespace-pre-wrap">{content}</div>
           </div>
         );
       })}

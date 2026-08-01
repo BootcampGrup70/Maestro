@@ -4,6 +4,7 @@
   max_tokens?: string;
   system_prompt?: string;
   think?: boolean;
+  workspace_dir?: string;
 }
 
 export interface AgentSettingsPayload {
@@ -13,6 +14,7 @@ export interface AgentSettingsPayload {
     temperature?: number;
     num_predict?: number;
     think?: boolean;
+    workspace_dir?: string;
   };
 }
 
@@ -47,6 +49,10 @@ export function buildAgentSettingsPayload(values: AgentSettingsFormValues): Agen
   // think her zaman gönderilir (checkbox kapalıyken false, açıkken true) —
   // böylece backend'in settings.get("think", False) okuması net çalışır.
   settings.think = Boolean(values.think);
+
+  if (values.workspace_dir !== undefined && values.workspace_dir !== null && values.workspace_dir.trim() !== "") {
+    settings.workspace_dir = values.workspace_dir.trim();
+  }
 
   if (Object.keys(settings).length > 0) {
     payload.settings = settings;

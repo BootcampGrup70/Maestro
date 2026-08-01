@@ -11,6 +11,7 @@ const defaultValues: AgentSettingsFormValues = {
   max_tokens: "",
   system_prompt: "",
   think: false,
+  workspace_dir: "",
 };
 
 function deriveInitialValues(initial?: Partial<Agent>): AgentSettingsFormValues {
@@ -22,6 +23,7 @@ function deriveInitialValues(initial?: Partial<Agent>): AgentSettingsFormValues 
     max_tokens: (settings.num_predict as string) ?? "",
     system_prompt: initial?.system_prompt ?? "",
     think: Boolean(settings.think),
+    workspace_dir: (settings.workspace_dir as string) ?? "",
   };
 }
 
@@ -160,6 +162,23 @@ export default function AgentSettingsForm({ agentId, initialValues, onSaved }: P
           placeholder="You are a helpful assistant..."
           className="w-full px-3 py-2 rounded-lg border border-neutral-700 bg-neutral-900 text-sm resize-y min-h-[120px]"
         />
+      </label>
+
+      <label className="block mb-4">
+        <span className="block mb-1 text-sm">Workspace Directory</span>
+        <input
+          name="workspace_dir"
+          type="text"
+          value={formValues.workspace_dir}
+          onChange={handleChange}
+          placeholder="Defaults to the server's shared workspace"
+          className="w-full px-3 py-2 rounded-lg border border-neutral-700 bg-neutral-900 text-sm"
+        />
+        <span className="block mt-1 text-xs text-neutral-500">
+          Directory this agent's filesystem tool can read/write. A relative path (e.g.
+          "project-a") is a subfolder of the server's default workspace; an absolute path
+          points the agent at that exact directory. Leave blank to use the default workspace.
+        </span>
       </label>
 
       <div className="mb-3 p-3 rounded-lg bg-neutral-900">
