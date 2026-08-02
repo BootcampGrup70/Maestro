@@ -124,3 +124,21 @@ Maestro
 # Sprint 3
 
 ---
+
+# Sprint 3
+
+- **Backlog Düzeni ve Story Seçimleri**: Projenin son sprinti olan Sprint 3'te, Product Backlog'da bekleyen en kritik kullanıcı deneyimi ve gerçek zamanlı etkileşim görevleri (WebSocket Inbound Messages, Canvas Node Visualization ve Tool Execution Logs) To-Do kolonuna alınmıştır. MVP hedeflerine ulaşmak için geliştirme süreçleri tamamen bu özelliklerin uçtan uca entegrasyonuna odaklanmıştır.
+- **Daily Scrum**: Son teslim haftası olması sebebiyle iletişim kanalları üzerinden günlük ilerleme durumları senkron olarak yürütülmüştür. Frontend ve Backend arasındaki WebSocket bağlantı testleri için ekip üyeleri ekran paylaşımlı anlık toplantılar düzenlemiştir.
+- **Sprint Board Update**: Sprint board screenshotları:
+  ![Trello Board 1](images/sprint_board1.png)
+  ![Trello Board 2](images/sprint_board2.png)
+- **Ürün Durumu**: 
+  - **Canvas ve Node Yönetimi:** Ana ekranda çoklu agent yapısı başarıyla görselleştirildi.
+  - **Gerçek Zamanlı Chat:** Ajanlara tıklanarak açılan yan panelde WebSocket mimarisi üzerinden sıfır gecikmeli "Chat" arayüzü entegre edildi. 
+  - **Tool-Calling ve Loglama:** Ajanların bilgisayarın yerel dosya sistemine erişim yetkisi (okuma/yazma) arayüze bağlandı.
+  - **Ekran Görüntüleri:** 
+    - Canvas ve Chat Arayüzü: ![Chat and Canvas UI](images/sprint3_ui1.jpeg)
+    - Tool Execution Logları: ![Tools UI](images/sprint3_ui2.jpeg)
+    - Dosya Sistemi Etkileşimi: ![File Output](images/sprint3_ui3.jpeg)
+- **Sprint Review**: Maestro v1 MVP'si başarıyla tamamlanmış ve proje hedeflenen tüm temel özellikleriyle teslim edilebilir duruma gelmiştir.
+- **Sprint Retrospective (Proje Kapanış):** Üç sprint boyunca uygulanan Branch-based PR kuralı, takımın kod kalitesini koruyan en önemli faktör olmuştur. "Sadece yerelde çalışma" kararı, takımın bulut maliyetlerine takılmadan hızla ürün geliştirmesini sağlamıştır.
